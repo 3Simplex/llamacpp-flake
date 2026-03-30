@@ -18,10 +18,14 @@
         };
       };
     in {
-      packages.${system}.default = pkgs.llama-cpp.override {
+      packages.${system}.default = (pkgs.llama-cpp.override {
         # This tells Nix to use the CUDA 12 toolkit for the build
         cudaPackages = pkgs.cudaPackages_12;
-      };
+      }).overrideAttrs (old: {
+        cmakeFlags = (old.cmakeFlags or [ ]) ++ [
+          "-DCMAKE_CUDA_ARCHITECTURES=120"
+        ];
+      });
 
       # Allow running it directly
       apps.${system}.default = {
