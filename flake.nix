@@ -25,27 +25,34 @@
       packages.${system}.default = cudaPkgs.backendStdenv.mkDerivation {
         name = "llama-cpp-cuda";
         src = llama-cpp;
-        nativeBuildInputs = [
+
+        nativeBuildInputs =[
           pkgs.cmake
           pkgs.ninja
           cudaPkgs.cuda_nvcc
         ];
-        buildInputs = [
+
+        buildInputs =[
           cudaPkgs.cudatoolkit
           cudaPkgs.cuda_cudart
           cudaPkgs.libcublas
         ];
-        cmakeFlags = [
+
+        # 1. PREVENT NIX FROM STRIPPING CPU OPTIMIZATIONS
+        # This is the magic flag that allows AVX/AVX2/FMA optimizations to pass through
+        NIX_ENFORCE_NO_NATIVE = 0;
+
+        cmakeFlags =[
           "-DGGML_CUDA=ON"
           "-DCMAKE_CUDA_ARCHITECTURES=${cudaArch}"
           "-DLLAMA_BUILD_TESTS=OFF"
+          "-DGGML_NATIVE=ON" # Explicitly enable native CPU optimizations
+
+          # Optional Pro-tip: Enable FlashAttention if your GPU is Ampere (86) or newer.
+          # Greatly speeds up prompt processing (PP).
+          "-DGGML_CUDA_FA=ON"
         ];
-        buildPhase = ''
-          cmake --build . --parallel $NIX_BUILD_CORES
-        '';
-        installPhase = ''
-          cmake --install . --prefix $out
-        '';
+
       };
       devShells.${system}.default = pkgs.mkShell {
         name = "llamacpp-dev";
