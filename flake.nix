@@ -17,7 +17,7 @@
 
       # We override the upstream cuda package to explicitly use the auto-matched CUDA toolchain.
       llama-cuda-auto = llama-cpp.packages.${system}.cuda.override {
-        cudaPackages = pkgs.cudaPackages;
+        cudaPackages = pkgs.cudaPackages_13;
       };
     in {
       packages.${system}.default = llama-cuda-auto.overrideAttrs (old: {
