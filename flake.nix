@@ -12,6 +12,8 @@
       system = "x86_64-linux";
       # ── Update this one line when your CUDA version changes ──
       cudaVersion = "cudaPackages_13_2";
+      # ── Update this to match your GPU (120=Blackwell, 89=Ada/40xx, 86=Ampere/30xx) ──
+      cudaArch = "120";
       # ─────────────────────────────────────────────────────────
       pkgs = import nixpkgs {
         inherit system;
@@ -20,7 +22,7 @@
       };
       cudaPkgs = pkgs.${cudaVersion};
     in {
-      packages.${system}.default = pkgs.stdenv.mkDerivation {
+      packages.${system}.default = cudaPkgs.backendStdenv.mkDerivation {
         name = "llama-cpp-cuda";
         src = llama-cpp;
         nativeBuildInputs = [
@@ -31,20 +33,27 @@
         buildInputs = [
           cudaPkgs.cudatoolkit
           cudaPkgs.cuda_cudart
+          cudaPkgs.libcublas
         ];
         cmakeFlags = [
           "-DGGML_CUDA=ON"
-          "-DCMAKE_CUDA_ARCHITECTURES=120"
+          "-DCMAKE_CUDA_ARCHITECTURES=${cudaArch}"
           "-DLLAMA_BUILD_TESTS=OFF"
         ];
-        NIXPKGS_ALLOW_UNFREE = "1";
+        buildPhase = ''
+          cmake --build . --parallel $NIX_BUILD_CORES
+        '';
         installPhase = ''
           cmake --install . --prefix $out
         '';
       };
       devShells.${system}.default = pkgs.mkShell {
         name = "llamacpp-dev";
-        LD_LIBRARY_PATH = "/run/opengl-driver/lib";
+        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+          cudaPkgs.cudatoolkit
+          cudaPkgs.cuda_cudart
+          cudaPkgs.libcublas
+        ] + ":/run/opengl-driver/lib";
       };
     };
 }
