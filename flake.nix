@@ -42,6 +42,10 @@
         # This is the magic flag that allows AVX/AVX2/FMA optimizations to pass through
         NIX_ENFORCE_NO_NATIVE = 0;
 
+        # 2. DISABLE NIX SECURITY HARDENING
+        # Strips out _FORTIFY_SOURCE bounds checking to restore Token Gen speeds
+        hardeningDisable = [ "all" ];
+
         cmakeFlags =[
           "-DGGML_CUDA=ON"
           "-DCMAKE_CUDA_ARCHITECTURES=${cudaArch}"
