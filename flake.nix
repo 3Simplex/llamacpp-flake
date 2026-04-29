@@ -22,7 +22,9 @@
       };
       cudaPkgs = pkgs.${cudaVersion};
     in {
-      packages.${system}.default = cudaPkgs.backendStdenv.mkDerivation {
+
+# Use pkgs.stdenv to get the newer GCC version you had in your devShell
+      packages.${system}.default = pkgs.stdenv.mkDerivation {
         name = "llama-cpp-cuda";
         src = llama-cpp;
 
@@ -38,26 +40,27 @@
           cudaPkgs.libcublas
         ];
 
-        # 1. PREVENT NIX FROM STRIPPING CPU OPTIMIZATIONS
-        # This is the magic flag that allows AVX/AVX2/FMA optimizations to pass through
+        # 1. FORCE -O3 OPTIMIZATION & NATIVE INSTRUCTIONS
+        # Overrides Nix's default -O2 to match raw CMake Release speeds
+        NIX_CFLAGS_COMPILE = "-O3 -march=native";
         NIX_ENFORCE_NO_NATIVE = 0;
 
         # 2. DISABLE NIX SECURITY HARDENING
-        # Strips out _FORTIFY_SOURCE bounds checking to restore Token Gen speeds
         hardeningDisable = [ "all" ];
 
         cmakeFlags =[
           "-DGGML_CUDA=ON"
           "-DCMAKE_CUDA_ARCHITECTURES=${cudaArch}"
           "-DLLAMA_BUILD_TESTS=OFF"
-          "-DGGML_NATIVE=ON" # Explicitly enable native CPU optimizations
+          "-DGGML_NATIVE=ON"
+          "-DGGML_LTO=ON" # Link-Time Optimization for faster CPU sampling
 
-          # Optional Pro-tip: Enable FlashAttention if your GPU is Ampere (86) or newer.
-          # Greatly speeds up prompt processing (PP).
-          "-DGGML_CUDA_FA=ON"
+          # Force CMake to strictly respect -O3
+          "-DCMAKE_C_FLAGS=-O3"
+          "-DCMAKE_CXX_FLAGS=-O3"
         ];
-
       };
+
       devShells.${system}.default = pkgs.mkShell {
         name = "llamacpp-dev";
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
